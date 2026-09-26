@@ -63,13 +63,18 @@ export default function NotificationBar() {
           className="flex-1 min-w-0 text-xs sm:text-sm font-medium text-amber-200 hover:text-amber-100 transition-colors truncate"
         >
           {notification.message}
+          {notification.date && (
+            <span className="hidden sm:inline ml-2 text-[11px] font-mono text-amber-300/70">
+              &middot; {notification.date}
+            </span>
+          )}
         </Link>
 
         <Link
           to={notification.href}
           className="hidden sm:inline text-xs font-mono text-amber-300/80 hover:text-amber-100 transition-colors whitespace-nowrap"
         >
-          Learn more &rarr;
+          View Results &rarr;
         </Link>
 
         <button

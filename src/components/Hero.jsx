@@ -1,5 +1,6 @@
 import NeuralNetDiagram from './NeuralNetDiagram';
 import TerminalPanel from './TerminalPanel';
+import ResultsButton from './ResultsButton';
 
 export default function Hero() {
   return (
@@ -67,25 +68,24 @@ export default function Hero() {
             </a>
           </div>
 
-          {/* next event card */}
-          <a
-            href="#events"
-            className="flex items-center gap-3 sm:gap-4 max-w-md px-3.5 sm:px-4 py-3 border border-border rounded-lg bg-surface/60 hover:border-text-dim transition-colors"
-          >
-            <span className="relative flex h-2 w-2 shrink-0">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-light opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary-light" />
-            </span>
-            <div className="flex-1 min-w-0">
-              <div className="text-[10px] sm:text-[11px] font-mono uppercase tracking-widest text-text-dim">
-                Next Event &middot; Sept 15
-              </div>
-              <div className="text-xs sm:text-sm text-text font-medium truncate">
-                Hiring Open &mdash; 2nd &amp; 3rd Year Students
+          {/* hiring results card */}
+          <div className="max-w-md px-3.5 sm:px-4 py-3 border border-border rounded-lg bg-surface/60">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <span className="relative flex h-2 w-2 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-light opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary-light" />
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="text-[10px] sm:text-[11px] font-mono uppercase tracking-widest text-text-dim">
+                  Hiring &middot; 2nd &amp; 3rd Year Students
+                </div>
+                <div className="text-xs sm:text-sm text-text font-medium truncate">
+                  Applications closed &mdash; results pending
+                </div>
               </div>
             </div>
-            <span className="text-text-dim">&rarr;</span>
-          </a>
+            <ResultsButton slug="hiring-2nd-3rd-year-2026" className="mt-3" />
+          </div>
         </div>
 
         {/* terminal: single foreground element, overlapping into the diagram backdrop */}

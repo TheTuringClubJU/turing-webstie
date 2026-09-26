@@ -15,7 +15,27 @@ import dheeksharambh2026Photo1 from '../assets/images/events/dheeksharambh-2026/
 import dheeksharambh2026Photo2 from '../assets/images/events/dheeksharambh-2026/photo-2.jpeg';
 import dheeksharambh2026Photo3 from '../assets/images/events/dheeksharambh-2026/photo-3.jpeg';
 
+import hiringPhoto1 from '../assets/images/events/hiring-2nd-3rd-year-2026/photo-1.jpeg';
+import hiringPhoto2 from '../assets/images/events/hiring-2nd-3rd-year-2026/photo-2.jpeg';
+import hiringPhoto3 from '../assets/images/events/hiring-2nd-3rd-year-2026/photo-3.jpeg';
+import hiringPhoto4 from '../assets/images/events/hiring-2nd-3rd-year-2026/photo-4.jpeg';
 export const EVENTS = [
+  {
+    slug: 'hiring-2nd-3rd-year-2026',
+    category: 'Events',
+    title: 'Hiring 2nd & 3rd Year Students',
+    meta: 'Recruitment',
+    date: 'Sept 2026',
+    hasResults: true,
+    description:
+      'The Turing Club ran a recruitment drive for new members across Tech, Design, Social Media, Marketing, and Photography, open to all 2nd and 3rd year students regardless of prior experience.',
+    photos: [
+      hiringPhoto1,
+      hiringPhoto2,
+      hiringPhoto3,
+      hiringPhoto4,
+    ],
+  },
   {
     slug: 'hackncrack',
     category: 'Events',
