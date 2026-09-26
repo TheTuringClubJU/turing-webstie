@@ -10,11 +10,12 @@ Tracking what's fixed vs. what's new to build. Move items to `[x]` once done, an
 - [x] Make the club logo in Navbar bigger and more highlighted/prominent
 - [x] Replace "Jain University" with "Jain (Deemed-to-be-University)" everywhere it appears (Navbar, About, Footer, etc.)
 - [x] Update real event photos in the HackNCrack section (replace placeholder image paths)
-- [ ] Update real leader/member images (replace placeholder image paths)
-- [ ] Restructure Leaders section hierarchy:
+- [X] Update real leader/member images (replace placeholder image paths)
+- [X] Restructure Leaders section hierarchy:
   - Faculty Advisor on top (already separate, keep as-is)
   - Below that: President, Vice President, Secretary shown in the middle/featured row
   - Remaining leads (Tech, Design, Social Media, Marketing, Photography) below as usual grid
+- [X] Fix production asset paths
 
 ---
 
@@ -28,6 +29,7 @@ Tracking what's fixed vs. what's new to build. Move items to `[x]` once done, an
   - Own hero section with its own heading/subheading and CTA
   - Sub-sections for: Events, Workshops, Seminars, Webinars (3–4 categories)
   - Reuses the same design system (colors, typography, card styles) as the rest of the site
+- [X] Add Deeksharambh 2025 and 2026 events, bid & byte events and cybersecurity workshop data
 
 ---
 
