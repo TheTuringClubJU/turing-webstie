@@ -69,45 +69,6 @@ const LEADS = [
   },
 ];
 
-function SocialIcons() {
-  return (
-    <div className="flex items-center gap-3 mt-3">
-      {/* LinkedIn */}
-      <a
-        href="#"
-        className="text-text-dim hover:text-primary-light transition-colors"
-        aria-label="LinkedIn"
-      >
-        <svg
-          viewBox="0 0 24 24"
-          fill="currentColor"
-          className="w-4 h-4"
-        >
-          <path d="M20.45 20.45h-3.55v-5.57c0-1.33-.02-3.04-1.85-3.04-1.86 0-2.15 1.45-2.15 2.94v5.67H9.35V9h3.41v1.56h.05c.47-.9 1.63-1.85 3.36-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29zM5.34 7.43a2.06 2.06 0 110-4.12 2.06 2.06 0 010 4.12zM7.12 20.45H3.56V9h3.56v11.45z" />
-        </svg>
-      </a>
-
-      {/* Gmail / Mail */}
-      <a
-        href="#"
-        className="text-text-dim hover:text-primary-light transition-colors"
-        aria-label="Email"
-      >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          className="w-4 h-4"
-        >
-          <rect x="3" y="5" width="18" height="14" rx="2" />
-          <path d="M3 7l9 6 9-6" />
-        </svg>
-      </a>
-    </div>
-  );
-}
-
 function FacultyCard({ name, role, year, image }) {
   return (
     <div className="flex flex-col items-center text-center">
@@ -130,8 +91,6 @@ function FacultyCard({ name, role, year, image }) {
       <div className="text-sm text-text-muted mt-2 max-w-xs">
         {year}
       </div>
-
-      <SocialIcons />
     </div>
   );
 }
@@ -165,8 +124,6 @@ function LeaderCard({ name, role, year, image, highlight = false }) {
         <div className="text-xs text-text-dim mt-1">
           {year}
         </div>
-
-        <SocialIcons />
       </div>
     </div>
   );
