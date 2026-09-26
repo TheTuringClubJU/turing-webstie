@@ -15,6 +15,9 @@ This list is maintained by hand alongside the GitHub [contributors graph](https:
 - Darsh Vithlani ([@CODING-DARSH](https://github.com/CODING-DARSH))
   - Added persistent upcoming event notifications and Upcoming Events section ([#3](https://github.com/CODING-DARSH/turing-webstie/pull/3))
   - Added Our Work section with Events, Workshops, Seminars, and dedicated detail pages ([#7](https://github.com/CODING-DARSH/turing-webstie/pull/7))
+  - Updated the Leaders section with the correct leadership hierarchy and updated leader photos.([#11](https://github.com/TheTuringClubJU/turing-webstie/pull/11))
+  - Fixes production image and ensured images are correctly bundled and displayed in the Vercel production build.([#12](https://github.com/TheTuringClubJU/turing-webstie/pull/12))
+  - Add Dheeksharambh 2025 and 2026 events, bid & byte events and cybersecurity workshop data.([#13](https://github.com/TheTuringClubJU/turing-webstie/pull/13))
 
 <!--
 Add new contributors below this line, following the format above.
