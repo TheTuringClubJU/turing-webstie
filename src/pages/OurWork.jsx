@@ -3,6 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 import { EVENTS } from '../data/events';
 import { WORKSHOPS } from '../data/workshops';
 import { SEMINARS } from '../data/seminars';
+import ResultsButton from '../components/ResultsButton';
 
 // each category carries its own accent color — used for the tab, the
 // card's meta tag, and its border highlight. Add new categories
@@ -60,12 +61,20 @@ function Card({ item, color }) {
         <p className="text-xs md:text-sm text-text-muted leading-relaxed mb-5">
           {item.description}
         </p>
-        <Link
-          to={`/our-work/${item.slug}`}
-          className="w-fit px-4 py-2 border border-border hover:border-text-dim transition-colors rounded-md font-semibold text-xs md:text-sm"
-        >
-          Read More
-        </Link>
+        <div className="flex flex-wrap items-center gap-3">
+          <Link
+            to={`/our-work/${item.slug}`}
+            className="w-fit px-4 py-2 border border-border hover:border-text-dim transition-colors rounded-md font-semibold text-xs md:text-sm"
+          >
+            Read More
+          </Link>
+          {item.hasResults && (
+            <ResultsButton
+              slug={item.slug}
+              className="!px-4 !py-2 !text-xs md:!text-sm"
+            />
+          )}
+        </div>
       </div>
       <div className="aspect-video sm:aspect-auto bg-surface order-1 sm:order-2">
         <img

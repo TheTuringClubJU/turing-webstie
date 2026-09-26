@@ -2,6 +2,7 @@ import { useParams, Link } from 'react-router-dom';
 import { EVENTS } from '../data/events';
 import { WORKSHOPS } from '../data/workshops';
 import { SEMINARS } from '../data/seminars';
+import ResultsButton from '../components/ResultsButton';
 
 const ALL_ITEMS = [...EVENTS, ...WORKSHOPS, ...SEMINARS];
 
@@ -65,6 +66,8 @@ export default function EventDetail() {
           <p className="text-sm md:text-base text-text-muted leading-relaxed max-w-3xl">
             {item.description}
           </p>
+
+          {item.hasResults && <ResultsButton slug={item.slug} className="mt-6" />}
         </div>
       </section>
 

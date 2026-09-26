@@ -1,14 +1,6 @@
 // Add upcoming events here as they're confirmed. Leave empty for the
 // empty-state to show automatically.
-const UPCOMING_EVENTS = [
-  {
-    title: 'Hiring Open — 2nd & 3rd Year Students',
-    date: 'Closes Sept 15, 2026',
-    description:
-      'The Turing Club is recruiting new members across Tech, Design, Social Media, Marketing, and Photography. Open to all 2nd and 3rd year students, regardless of prior experience — just bring the willingness to build.',
-    href: '#',
-  },
-];
+const UPCOMING_EVENTS = [];
 
 export default function UpcomingEvents() {
   return (
