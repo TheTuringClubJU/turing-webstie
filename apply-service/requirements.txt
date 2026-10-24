@@ -1,4 +1,16 @@
-# Used by the schema tests and CI lint. The backend (FastAPI etc.) will add its own packages here later.
-psycopg[binary]==3.2.3
-pytest==8.3.4
+# Core database driver
+psycopg[binary]==3.3.6
+
+# FastAPI backend (Diganth) + test harness (Swapnil)
+fastapi==0.159.1
+uvicorn==0.54.0
+httpx==0.28.1
+pydantic-settings==2.16.1
+slowapi==0.1.10
+
+# Testing
+pytest==9.1.1
+pytest-asyncio==1.4.0
+
+# Lint
 ruff==0.17.1

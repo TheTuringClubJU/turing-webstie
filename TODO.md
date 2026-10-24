@@ -247,9 +247,10 @@ Today "Apply to Join" does nothing useful: the Hero button is a plain `<button>`
 
 | Person | Area | In one line |
 |---|---|---|
-| **Darsh** (lead) | Database, storage, email, CI/CD | Neon DB + schema, MinIO, Brevo email, GitHub Actions, deployment, final merge to `main` |
-| **Subham** | Frontend | `/apply` page and form UI, validation, success/error states, rewire every "Apply to Join" button |
-| **Diganth** | Backend | FastAPI app, the submit endpoint, validation, duplicate handling, rate limiting, backend tests |
+| **Darsh** (lead) | Database, storage, email, CI/CD | Neon DB + schema, MinIO, Brevo email, GitHub Actions, deployment, final merge to `main`; also leads email integration across features |
+| **Subham** | Frontend | `/apply` page and form UI, validation, success/error states, rewire every "Apply to Join" button — coordinates with Diganth if needed |
+| **Diganth** | Backend | FastAPI app, the submit endpoint, validation, duplicate handling, rate limiting |
+| **Swapnil** | Backend regression tests | All pytest regression tests (Groups 1–9) for the apply-service — **coordinates with Diganth** on the API behaviour |
 | **Krishnapriya** | Integration | Connect frontend to backend for real, error mapping, env/CORS, full-stack local setup, end-to-end + contract tests |
 
 ### Branch strategy (read this first)
@@ -752,8 +753,6 @@ You make sure the frontend and backend actually work **together**, and that they
 - **Frontend** (Subham): Vitest + React Testing Library for form validation and the success/error states.
 - **Integration** (Krishnapriya): Playwright end-to-end plus the contract test.
 - **Rules:** CI must pass before any PR merges into `feat/apply-form` or `main`. **Every bug found later gets a regression test in the same PR that fixes it.** CI never talks to the production Neon database or sends real emails.
-
----
 
 ## Notes
 
