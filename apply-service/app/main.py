@@ -1,9 +1,9 @@
-"""FastAPI application, health route, CORS, and shared error handling."""
+"""FastAPI application, API routes, and shared error handling."""
 
 import logging
 from collections.abc import Mapping
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -11,7 +11,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.config import Settings
 from app.errors import ApiError
-from app.schemas import HealthResponse
+from app.services.application_service import submit_application
 
 logger = logging.getLogger(__name__)
 
@@ -73,11 +73,14 @@ def register_error_handlers(application: FastAPI) -> None:
         )
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None,
+) -> FastAPI:
     """Create the API application using validated runtime settings."""
     runtime_settings = settings or Settings()
     application = FastAPI(title="Turing Club Apply API")
     application.state.settings = runtime_settings
+    application.state.storage = None
     application.add_middleware(
         CORSMiddleware,
         allow_origins=runtime_settings.allowed_origins,
@@ -87,9 +90,34 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     register_error_handlers(application)
 
-    @application.get("/api/v1/health", response_model=HealthResponse)
-    async def health() -> HealthResponse:
-        return HealthResponse(status="ok")
+    @application.get("/api/v1/health")
+    async def health() -> dict[str, str]:
+        return {"status": "ok"}
+
+    @application.post("/api/v1/applications", status_code=201)
+    async def create_application(
+        request: Request,
+        name: str = Form(...),
+        usn: str = Form(...),
+        college_email: str | None = Form(default=None),
+        personal_email: str = Form(...),
+        mobile: str = Form(...),
+        domains: list[str] = Form(...),
+        resume: UploadFile = File(...),
+    ) -> dict[str, str]:
+        return await submit_application(
+            settings=request.app.state.settings,
+            storage=request.app.state.storage,
+            form_data={
+                "name": name,
+                "usn": usn,
+                "college_email": college_email,
+                "personal_email": personal_email,
+                "mobile": mobile,
+                "domains": domains,
+            },
+            resume=resume,
+        )
 
     return application
 

@@ -525,14 +525,14 @@ You own the API layer: routes, request validation, business flow. You do **not**
 - Done when: `uvicorn` starts, `/api/v1/health` works, `pytest` and `ruff` pass in CI. **Merge this quickly; Darsh's D3 and D4 are waiting on it.**
 
 **B2. PR `feat/apply-submit-endpoint`** (needs B1 + D2)
-- [ ] `POST /api/v1/applications` per the contract: multipart form with repeated `domains` field and a `resume` file.
-- [ ] Pydantic schemas in `app/schemas.py` implementing every rule in the field rules table: trimming, uppercase USN, lowercase emails, mobile normalization to 10 digits, domain whitelist, no duplicate domains.
-- [ ] Resume checks: reject non-PDF (check the `%PDF-` signature, not only the extension), reject empty files, reject files over `MAX_RESUME_MB` (return `413`; don't read an unbounded upload into memory).
-- [ ] Flow in `app/services/application_service.py`, in this order: validate, check duplicate (`usn` + `cycle`), upload resume via `storage.upload_resume`, insert application and domain rows in **one transaction**, return `201`. The route in `app/main.py` only calls this function.
-- [ ] If the DB insert fails after the upload, **delete the uploaded object** (`storage.delete_resume`) so no orphan files remain.
-- [ ] Two simultaneous submissions from the same USN must not both succeed: rely on the DB unique constraint, catch the integrity error and return `409`.
-- [ ] Do not log personal data (names, USN, phones, emails). Log the application `id` only.
-- [ ] **All tests in Groups 2 to 6** of "Mandatory regression tests (Diganth)" below (validation, resume, save flow, duplicates and concurrency, privacy and security), using the fakes for storage.
+- [x] `POST /api/v1/applications` per the contract: multipart form with repeated `domains` field and a `resume` file.
+- [x] Pydantic schemas in `app/schemas.py` implementing every rule in the field rules table: trimming, uppercase USN, lowercase emails, mobile normalization to 10 digits, domain whitelist, no duplicate domains.
+- [x] Resume checks: reject non-PDF (check the `%PDF-` signature, not only the extension), reject empty files, reject files over `MAX_RESUME_MB` (return `413`; don't read an unbounded upload into memory).
+- [x] Flow in `app/services/application_service.py`, in this order: validate, check duplicate (`usn` + `cycle`), upload resume via `storage.upload_resume`, insert application and domain rows in **one transaction**, return `201`. The route in `app/main.py` only calls this function.
+- [x] If the DB insert fails after the upload, **delete the uploaded object** (`storage.delete_resume`) so no orphan files remain.
+- [x] Two simultaneous submissions from the same USN must not both succeed: rely on the DB unique constraint, catch the integrity error and return `409`.
+- [x] Do not log personal data (names, USN, phones, emails). Log the application `id` only.
+- [x] **All tests in Groups 2 to 6** of "Mandatory regression tests (Diganth)" below (validation, resume, save flow, duplicates and concurrency, privacy and security), using the fakes for storage.
 - Done when: all tests pass in CI and the endpoint can be called with curl/Postman against local Postgres.
 
 **B3. PR `feat/apply-email-and-hardening`** (needs B2, D3, D4)
