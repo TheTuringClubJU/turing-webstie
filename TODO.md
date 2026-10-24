@@ -516,23 +516,23 @@ All design must use the tokens from `src/index.css` (`bg-surface`, `border-borde
 You own the API layer: routes, request validation, business flow. You do **not** write the database schema, MinIO code or email code (Darsh does, per the interfaces above); use fakes with the same signatures until those merge.
 
 **B1. PR `feat/apply-backend-scaffold`** (base: `feat/apply-form`; start immediately)
-- [ ] Inside the existing `apply-service/` folder add: the FastAPI app in `app/main.py`, settings loaded from environment variables in `app/config.py` (pydantic settings) using the variable names in the contract, your packages added (pinned) to the existing `requirements.txt`, and a `ruff.toml`. `pytest.ini` already exists.
-- [ ] `GET /api/v1/health`.
-- [ ] CORS middleware using `CORS_ORIGINS` (explicit origins, no `*`).
-- [ ] Global error handlers that produce the contract's response shapes (`validation_error` with a `fields` map, `server_error`, etc.), replacing FastAPI's default 422 body.
-- [ ] The shared fixtures and the **Group 1 tests** from "Mandatory regression tests (Diganth)" below.
-- [ ] Follow the "Folder structure" section above. Yours: `app/main.py`, `app/config.py`, `app/schemas.py`, `app/services/application_service.py` and the API test files. Darsh's, don't edit: `app/services/storage.py`, `app/services/email.py`, `db/schema.sql`, `tests/test_schema.py`.
+- [x] Inside the existing `apply-service/` folder add: the FastAPI app in `app/main.py`, settings loaded from environment variables in `app/config.py` (pydantic settings) using the variable names in the contract, your packages added (pinned) to the existing `requirements.txt`, and a `ruff.toml`. `pytest.ini` already exists.
+- [x] `GET /api/v1/health`.
+- [x] CORS middleware using `CORS_ORIGINS` (explicit origins, no `*`).
+- [x] Global error handlers that produce the contract's response shapes (`validation_error` with a `fields` map, `server_error`, etc.), replacing FastAPI's default 422 body.
+- [x] The shared fixtures and the **Group 1 tests** from "Mandatory regression tests (Diganth)" below.
+- [x] Follow the "Folder structure" section above. Yours: `app/main.py`, `app/config.py`, `app/schemas.py`, `app/services/application_service.py` and the API test files. Darsh's, don't edit: `app/services/storage.py`, `app/services/email.py`, `db/schema.sql`, `tests/test_schema.py`.
 - Done when: `uvicorn` starts, `/api/v1/health` works, `pytest` and `ruff` pass in CI. **Merge this quickly; Darsh's D3 and D4 are waiting on it.**
 
 **B2. PR `feat/apply-submit-endpoint`** (needs B1 + D2)
-- [ ] `POST /api/v1/applications` per the contract: multipart form with repeated `domains` field and a `resume` file.
-- [ ] Pydantic schemas in `app/schemas.py` implementing every rule in the field rules table: trimming, uppercase USN, lowercase emails, mobile normalization to 10 digits, domain whitelist, no duplicate domains.
-- [ ] Resume checks: reject non-PDF (check the `%PDF-` signature, not only the extension), reject empty files, reject files over `MAX_RESUME_MB` (return `413`; don't read an unbounded upload into memory).
-- [ ] Flow in `app/services/application_service.py`, in this order: validate, check duplicate (`usn` + `cycle`), upload resume via `storage.upload_resume`, insert application and domain rows in **one transaction**, return `201`. The route in `app/main.py` only calls this function.
-- [ ] If the DB insert fails after the upload, **delete the uploaded object** (`storage.delete_resume`) so no orphan files remain.
-- [ ] Two simultaneous submissions from the same USN must not both succeed: rely on the DB unique constraint, catch the integrity error and return `409`.
-- [ ] Do not log personal data (names, USN, phones, emails). Log the application `id` only.
-- [ ] **All tests in Groups 2 to 6** of "Mandatory regression tests (Diganth)" below (validation, resume, save flow, duplicates and concurrency, privacy and security), using the fakes for storage.
+- [x] `POST /api/v1/applications` per the contract: multipart form with repeated `domains` field and a `resume` file.
+- [x] Pydantic schemas in `app/schemas.py` implementing every rule in the field rules table: trimming, uppercase USN, lowercase emails, mobile normalization to 10 digits, domain whitelist, no duplicate domains.
+- [x] Resume checks: reject non-PDF (check the `%PDF-` signature, not only the extension), reject empty files, reject files over `MAX_RESUME_MB` (return `413`; don't read an unbounded upload into memory).
+- [x] Flow in `app/services/application_service.py`, in this order: validate, check duplicate (`usn` + `cycle`), upload resume via `storage.upload_resume`, insert application and domain rows in **one transaction**, return `201`. The route in `app/main.py` only calls this function.
+- [x] If the DB insert fails after the upload, **delete the uploaded object** (`storage.delete_resume`) so no orphan files remain.
+- [x] Two simultaneous submissions from the same USN must not both succeed: rely on the DB unique constraint, catch the integrity error and return `409`.
+- [x] Do not log personal data (names, USN, phones, emails). Log the application `id` only.
+- [x] **All tests in Groups 2 to 6** of "Mandatory regression tests (Diganth)" below (validation, resume, save flow, duplicates and concurrency, privacy and security), using the fakes for storage.
 - Done when: all tests pass in CI and the endpoint can be called with curl/Postman against local Postgres.
 
 **B3. PR `feat/apply-email-and-hardening`** (needs B2, D3, D4)

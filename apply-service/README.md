@@ -1,17 +1,44 @@
 # apply-service
 
-Microservice for **Apply to Join**: stores applications (Neon / Postgres), resume PDFs (MinIO) and sends the thank-you email (Brevo). This folder currently holds the **database schema** (owner: Darsh). The API, storage and email code are added later.
+Microservice for **Apply to Join**: stores applications (Neon / Postgres), resume PDFs (MinIO) and sends the thank-you email (Brevo). This change adds the FastAPI scaffold, configuration, health endpoint, CORS, and shared JSON error responses. The multipart submission endpoint and transactional persistence are implemented here. Real storage and email integrations are follow-up tasks.
 
 ## What is here
 
 ```
 apply-service/
+  app/
+    main.py               FastAPI app, health route, CORS, and error responses
+    config.py             validated environment settings
+    errors.py             sanitized API errors
+    schemas.py            API response schemas
+    services/             application service package
   db/schema.sql           the whole database schema (one file)
-  tests/                  schema tests, run against a real Postgres
-  requirements.txt        packages used by the tests
+  tests/                  API and schema tests
+  requirements.txt        pinned API, test, and lint dependencies
+  ruff.toml
   pytest.ini
   .env.example
 ```
+
+## Start the API
+
+Copy `.env.example` to `.env`, set the runtime values (including `DATABASE_URL`,
+`APPLICATION_CYCLE`, and `CORS_ORIGINS`), then run:
+
+```bash
+uvicorn app.main:app --reload
+```
+
+The health endpoint is `GET /api/v1/health`. `CORS_ORIGINS` accepts a
+comma-separated list of explicit frontend origins and rejects wildcard origins.
+Validation, HTTP, and unexpected errors use the API's JSON contract; unexpected
+errors are logged without exposing internal details in the response.
+
+## Submit an application
+
+`POST /api/v1/applications` accepts multipart form fields `name`, `usn`, `personal_email`, `mobile`, one or more repeated `domains` fields, an optional `college_email`, and a PDF `resume`. The service normalizes and validates fields, enforces the configured resume size limit, uploads through an injected storage service, and commits the application and selected domains in one PostgreSQL transaction. Storage remains an injected interface in this change; the tests use an in-memory fake. Do not enable live submissions until Darsh's MinIO integration is wired in.
+
+Run backend tests with `TEST_DATABASE_URL` set to a disposable local PostgreSQL server whose role can create databases. The tests create and drop their own temporary database; never use production data.
 
 ## Tables
 
