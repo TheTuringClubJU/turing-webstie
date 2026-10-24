@@ -516,12 +516,12 @@ All design must use the tokens from `src/index.css` (`bg-surface`, `border-borde
 You own the API layer: routes, request validation, business flow. You do **not** write the database schema, MinIO code or email code (Darsh does, per the interfaces above); use fakes with the same signatures until those merge.
 
 **B1. PR `feat/apply-backend-scaffold`** (base: `feat/apply-form`; start immediately)
-- [ ] Inside the existing `apply-service/` folder add: the FastAPI app in `app/main.py`, settings loaded from environment variables in `app/config.py` (pydantic settings) using the variable names in the contract, your packages added (pinned) to the existing `requirements.txt`, and a `ruff.toml`. `pytest.ini` already exists.
-- [ ] `GET /api/v1/health`.
-- [ ] CORS middleware using `CORS_ORIGINS` (explicit origins, no `*`).
-- [ ] Global error handlers that produce the contract's response shapes (`validation_error` with a `fields` map, `server_error`, etc.), replacing FastAPI's default 422 body.
-- [ ] The shared fixtures and the **Group 1 tests** from "Mandatory regression tests (Diganth)" below.
-- [ ] Follow the "Folder structure" section above. Yours: `app/main.py`, `app/config.py`, `app/schemas.py`, `app/services/application_service.py` and the API test files. Darsh's, don't edit: `app/services/storage.py`, `app/services/email.py`, `db/schema.sql`, `tests/test_schema.py`.
+- [x] Inside the existing `apply-service/` folder add: the FastAPI app in `app/main.py`, settings loaded from environment variables in `app/config.py` (pydantic settings) using the variable names in the contract, your packages added (pinned) to the existing `requirements.txt`, and a `ruff.toml`. `pytest.ini` already exists.
+- [x] `GET /api/v1/health`.
+- [x] CORS middleware using `CORS_ORIGINS` (explicit origins, no `*`).
+- [x] Global error handlers that produce the contract's response shapes (`validation_error` with a `fields` map, `server_error`, etc.), replacing FastAPI's default 422 body.
+- [x] The shared fixtures and the **Group 1 tests** from "Mandatory regression tests (Diganth)" below.
+- [x] Follow the "Folder structure" section above. Yours: `app/main.py`, `app/config.py`, `app/schemas.py`, `app/services/application_service.py` and the API test files. Darsh's, don't edit: `app/services/storage.py`, `app/services/email.py`, `db/schema.sql`, `tests/test_schema.py`.
 - Done when: `uvicorn` starts, `/api/v1/health` works, `pytest` and `ruff` pass in CI. **Merge this quickly; Darsh's D3 and D4 are waiting on it.**
 
 **B2. PR `feat/apply-submit-endpoint`** (needs B1 + D2)

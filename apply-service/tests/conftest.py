@@ -17,6 +17,23 @@ from psycopg.conninfo import make_conninfo
 
 SCHEMA_FILE = Path(__file__).resolve().parent.parent / "db" / "schema.sql"
 
+os.environ.setdefault("DATABASE_URL", "postgresql://test:test@localhost/test")
+os.environ.setdefault("APPLICATION_CYCLE", "2026-hiring")
+os.environ.setdefault("CORS_ORIGINS", "http://localhost:5173")
+os.environ.setdefault("MINIO_ENDPOINT", "localhost:9000")
+os.environ.setdefault("MINIO_ACCESS_KEY", "test")
+os.environ.setdefault("MINIO_SECRET_KEY", "test")
+os.environ.setdefault("MINIO_SECURE", "false")
+os.environ.setdefault("BREVO_SMTP_HOST", "localhost")
+os.environ.setdefault("BREVO_SMTP_PORT", "587")
+os.environ.setdefault("BREVO_SMTP_LOGIN", "test")
+os.environ.setdefault("BREVO_SMTP_KEY", "test")
+os.environ.setdefault("EMAIL_FROM", "test@example.com")
+os.environ.setdefault("EMAIL_FROM_NAME", "Turing Club")
+
+from app.config import Settings  # noqa: E402
+from app.main import create_app  # noqa: E402
+
 
 def _url() -> str:
     url = os.environ.get("TEST_DATABASE_URL")
@@ -62,3 +79,52 @@ def conn(db_url):
     yield connection
     connection.rollback()
     connection.close()
+
+
+@pytest.fixture
+def settings() -> Settings:
+    return Settings(
+        database_url="postgresql://test:test@localhost/test",
+        application_cycle="2026-hiring",
+        cors_origins="http://localhost:5173",
+        minio_endpoint="localhost:9000",
+        minio_access_key="test",
+        minio_secret_key="test",
+        minio_secure=False,
+        brevo_smtp_host="localhost",
+        brevo_smtp_port=587,
+        brevo_smtp_login="test",
+        brevo_smtp_key="test",
+        email_from="test@example.com",
+        email_from_name="Turing Club",
+        app_env="test",
+    )
+
+
+@pytest.fixture
+def client(settings: Settings):
+    from fastapi.testclient import TestClient
+
+    return TestClient(create_app(settings))
+
+
+@pytest.fixture
+def api_test_app(settings: Settings):
+    application = create_app(settings)
+
+    @application.get("/__test__/validation")
+    async def validation_probe(required: int) -> dict[str, int]:
+        return {"required": required}
+
+    @application.get("/__test__/error")
+    async def error_probe() -> None:
+        raise RuntimeError("sensitive internal diagnostic")
+
+    return application
+
+
+@pytest.fixture
+def error_client(api_test_app):
+    from fastapi.testclient import TestClient
+
+    return TestClient(api_test_app, raise_server_exceptions=False)

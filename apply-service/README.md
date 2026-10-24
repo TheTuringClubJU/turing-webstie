@@ -1,17 +1,38 @@
 # apply-service
 
-Microservice for **Apply to Join**: stores applications (Neon / Postgres), resume PDFs (MinIO) and sends the thank-you email (Brevo). This folder currently holds the **database schema** (owner: Darsh). The API, storage and email code are added later.
+Microservice for **Apply to Join**: stores applications (Neon / Postgres), resume PDFs (MinIO) and sends the thank-you email (Brevo). This change adds the FastAPI scaffold, configuration, health endpoint, CORS, and shared JSON error responses. Submission, storage, and email behavior are implemented in follow-up tasks.
 
 ## What is here
 
 ```
 apply-service/
+  app/
+    main.py               FastAPI app, health route, CORS, and error responses
+    config.py             validated environment settings
+    errors.py             sanitized API errors
+    schemas.py            API response schemas
+    services/             application service package
   db/schema.sql           the whole database schema (one file)
-  tests/                  schema tests, run against a real Postgres
-  requirements.txt        packages used by the tests
+  tests/                  API and schema tests
+  requirements.txt        pinned API, test, and lint dependencies
+  ruff.toml
   pytest.ini
   .env.example
 ```
+
+## Start the API
+
+Copy `.env.example` to `.env`, set the runtime values (including `DATABASE_URL`,
+`APPLICATION_CYCLE`, and `CORS_ORIGINS`), then run:
+
+```bash
+uvicorn app.main:app --reload
+```
+
+The health endpoint is `GET /api/v1/health`. `CORS_ORIGINS` accepts a
+comma-separated list of explicit frontend origins and rejects wildcard origins.
+Validation, HTTP, and unexpected errors use the API's JSON contract; unexpected
+errors are logged without exposing internal details in the response.
 
 ## Tables
 
