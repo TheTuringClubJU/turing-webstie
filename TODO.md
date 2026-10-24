@@ -525,22 +525,24 @@ You own the API layer: routes, request validation, business flow. You do **not**
 - Done when: `uvicorn` starts, `/api/v1/health` works, `pytest` and `ruff` pass in CI. **Merge this quickly; Darsh's D3 and D4 are waiting on it.**
 
 **B2. PR `feat/apply-submit-endpoint`** (needs B1 + D2)
+> Implementation and Groups 2–6 tests pass locally against a temporary PostgreSQL
+> server. GitHub CI and the PR remain pending; no code has been pushed.
 - [x] `POST /api/v1/applications` per the contract: multipart form with repeated `domains` field and a `resume` file.
 - [x] Pydantic schemas in `app/schemas.py` implementing every rule in the field rules table: trimming, uppercase USN, lowercase emails, mobile normalization to 10 digits, domain whitelist, no duplicate domains.
 - [x] Resume checks: reject non-PDF (check the `%PDF-` signature, not only the extension), reject empty files, reject files over `MAX_RESUME_MB` (return `413`; don't read an unbounded upload into memory).
 - [x] Flow in `app/services/application_service.py`, in this order: validate, check duplicate (`usn` + `cycle`), upload resume via `storage.upload_resume`, insert application and domain rows in **one transaction**, return `201`. The route in `app/main.py` only calls this function.
 - [x] If the DB insert fails after the upload, **delete the uploaded object** (`storage.delete_resume`) so no orphan files remain.
-- [x] Two simultaneous submissions from the same USN must not both succeed: rely on the DB unique constraint, catch the integrity error and return `409`.
+- [x] Concurrent submissions for one USN cannot both succeed: rely on the DB unique constraint, catch the integrity error and return `409`.
 - [x] Do not log personal data (names, USN, phones, emails). Log the application `id` only.
 - [x] **All tests in Groups 2 to 6** of "Mandatory regression tests (Diganth)" below (validation, resume, save flow, duplicates and concurrency, privacy and security), using the fakes for storage.
-- Done when: all tests pass in CI and the endpoint can be called with curl/Postman against local Postgres.
+- Verified locally against temporary PostgreSQL; GitHub CI and an interactive Postman run remain outstanding.
 
 **B3. PR `feat/apply-email-and-hardening`** (needs B2, D3, D4)
-- [ ] Swap the fakes for the real storage and email services.
-- [ ] After a successful save, send the confirmation email as a **background task**: the `201` must **not wait for** the email, and an email failure must **never** fail or roll back the application. Update `confirmation_email_status` (`sent` / `failed`) and `confirmation_email_sent_at`; log failures without personal data.
-- [ ] Rate limiting on `POST /applications` (per IP) returning the `429` shape.
-- [ ] **All tests in Groups 7 to 9** of "Mandatory regression tests (Diganth)" below (email, rate limiting, full flows). The whole suite (Groups 1 to 9) must pass together.
-- Done when: the full flow works against local Postgres + MinIO and a real test email arrives; CI is green.
+- [ ] Wire the real storage and email services from Darsh's D3/D4 implementations; neither service module is present in this snapshot.
+- [x] After a successful save, schedule the confirmation email as a background task: the `201` is sent before the task runs, and an email failure never fails or rolls back the application. Update `confirmation_email_status` (`sent` / `failed`) and `confirmation_email_sent_at`; log failures without personal data.
+- [x] Configurable sliding-window rate limiting on `POST /applications` keyed by the direct client IP, returning the `429` shape. The current limiter is per process.
+- [x] **All tests in Groups 7 to 9** of "Mandatory regression tests (Diganth)" below (email, rate limiting, full flows). The complete local suite passes.
+- Done when: D3/D4 are wired, the full flow works against local Postgres + MinIO and a real test email arrives, and CI is green.
 
 #### Mandatory regression tests (Diganth)
 
@@ -557,169 +559,169 @@ These tests are **required**. A backend PR cannot merge into `feat/apply-form` u
 **Files** (under `apply-service/tests/`): `conftest.py`, `test_health_config_errors.py`, `test_validation.py`, `test_resume.py`, `test_save_flow.py`, `test_duplicates.py`, `test_privacy_security.py`, `test_email.py`, `test_rate_limit.py`, `test_full_flows.py`.
 
 **Fixtures in `conftest.py`** (B1/B2):
-- [ ] `client` (FastAPI test client). A **real Postgres test database** setup already exists in `apply-service/tests/conftest.py` (`db_url`, `conn`). `TEST_DATABASE_URL` points at a local Postgres **server**; each test run creates a temporary database from `db/schema.sql` and drops it automatically. **Add your fixtures to that file; don't replace it.** Each test must stay isolated (rollback or truncate).
-- [ ] `fake_storage`: in-memory, records `upload_resume` / `delete_resume` calls, can raise on demand.
-- [ ] `fake_email`: records calls (`to`, `name`, `domains`), can raise or sleep on demand.
-- [ ] `valid_payload()`: a complete valid form dict that tests then tweak one field at a time.
-- [ ] `make_pdf(size_bytes)`: returns bytes that start with `%PDF-`, padded to the exact size.
-- [ ] Settings override: fixed `APPLICATION_CYCLE`, small rate limit; **rate limiting disabled by default** and enabled only in `test_rate_limit.py`.
+- [x] `client` (FastAPI test client). A **real Postgres test database** setup already exists in `apply-service/tests/conftest.py` (`db_url`, `conn`). `TEST_DATABASE_URL` points at a local Postgres **server**; each test run creates a temporary database from `db/schema.sql` and drops it automatically. **Add your fixtures to that file; don't replace it.** Each test must stay isolated (rollback or truncate).
+- [x] `fake_storage`: in-memory, records `upload_resume` / `delete_resume` calls, can raise on demand.
+- [x] `fake_email`: records calls (`to`, `name`, `domains`), can raise or sleep on demand.
+- [x] `valid_payload()`: a complete valid form dict that tests then tweak one field at a time.
+- [x] `make_pdf(size_bytes)`: returns bytes that start with `%PDF-`, padded to the exact size.
+- [x] Settings override: fixed `APPLICATION_CYCLE`, small rate limit; **rate limiting disabled by default** and enabled only in `test_rate_limit.py`.
 
 **About USN and college email (important for these tests)**
 - **USN has no fixed format** (it changes every year), so the backend and these tests must **never** assert a year-, branch- or college-specific pattern. Rules are deliberately loose: trimmed, uppercased, letters and digits only, within a min/max length.
 - **College email is optional** and has **no domain restriction**. People may or may not have one, so absent, empty and whitespace-only must all be fine and stored as `NULL`.
 
 **Group 1: health, config, CORS, error shape** (required in **B1**)
-- [ ] `test_health_returns_ok`
-- [ ] `test_unknown_route_returns_json_404`
-- [ ] `test_wrong_method_returns_json_405`
-- [ ] `test_validation_error_uses_contract_shape` (`error` + `fields` map)
-- [ ] `test_unexpected_exception_returns_500_contract_shape_without_internals`
-- [ ] `test_app_fails_fast_when_required_env_missing`
-- [ ] `test_cors_allows_configured_origin`
-- [ ] `test_cors_blocks_unlisted_origin`
-- [ ] `test_cors_preflight_options_succeeds`
-- [ ] `test_cors_wildcard_origin_rejected_in_production_config`
+- [x] `test_health_returns_ok`
+- [x] `test_unknown_route_returns_json_404`
+- [x] `test_wrong_method_returns_json_405`
+- [x] `test_validation_error_uses_contract_shape` (`error` + `fields` map)
+- [x] `test_unexpected_exception_returns_500_contract_shape_without_internals`
+- [x] `test_app_fails_fast_when_required_env_missing`
+- [x] `test_cors_allows_configured_origin`
+- [x] `test_cors_blocks_unlisted_origin`
+- [x] `test_cors_preflight_options_succeeds`
+- [x] `test_cors_wildcard_origin_rejected_in_production_config`
 
-**Group 2: field validation** (required in **B2**, file `test_validation.py`)
+**Group 2: field validation** (required in **B2**, file `test_validation.py`; verified locally)
 
 Name
-- [ ] `test_name_required`
-- [ ] `test_name_trimmed`
-- [ ] `test_name_too_short_rejected`
-- [ ] `test_name_too_long_rejected`
-- [ ] `test_name_allows_dots_apostrophes_hyphens`
-- [ ] `test_name_accepts_non_ascii_letters`
-- [ ] `test_name_with_html_or_script_rejected`
+- [x] `test_name_required`
+- [x] `test_name_trimmed`
+- [x] `test_name_too_short_rejected`
+- [x] `test_name_too_long_rejected`
+- [x] `test_name_allows_dots_apostrophes_hyphens`
+- [x] `test_name_accepts_non_ascii_letters`
+- [x] `test_name_with_html_or_script_rejected`
 
 USN (no fixed format)
-- [ ] `test_usn_required`
-- [ ] `test_usn_whitespace_only_rejected`
-- [ ] `test_usn_trimmed_and_uppercased`
-- [ ] `test_usn_accepts_many_different_formats` (parametrized: old-style, new-style, all digits, letters-first, shortest and longest allowed; proves no year/branch pattern is enforced)
-- [ ] `test_usn_boundary_lengths_accepted` (exactly min and exactly max)
-- [ ] `test_usn_too_short_rejected`
-- [ ] `test_usn_too_long_rejected`
-- [ ] `test_usn_inner_spaces_rejected`
-- [ ] `test_usn_special_characters_rejected` (parametrized: `<script>`, SQL-looking text, `../`, emoji, punctuation)
+- [x] `test_usn_required`
+- [x] `test_usn_whitespace_only_rejected`
+- [x] `test_usn_trimmed_and_uppercased`
+- [x] `test_usn_accepts_many_different_formats` (parametrized: old-style, new-style, all digits, letters-first, shortest and longest allowed; proves no year/branch pattern is enforced)
+- [x] `test_usn_boundary_lengths_accepted` (exactly min and exactly max)
+- [x] `test_usn_too_short_rejected`
+- [x] `test_usn_too_long_rejected`
+- [x] `test_usn_inner_spaces_rejected`
+- [x] `test_usn_special_characters_rejected` (parametrized: `<script>`, SQL-looking text, `../`, emoji, punctuation)
 
 College email (optional)
-- [ ] `test_college_email_omitted_is_ok` (field missing entirely, stored `NULL`)
-- [ ] `test_college_email_empty_string_stored_as_null`
-- [ ] `test_college_email_whitespace_only_stored_as_null`
-- [ ] `test_college_email_valid_is_stored_trimmed_and_lowercase`
-- [ ] `test_college_email_invalid_rejected`
-- [ ] `test_college_email_any_domain_accepted` (no domain restriction)
-- [ ] `test_college_email_same_as_personal_email_is_ok`
+- [x] `test_college_email_omitted_is_ok` (field missing entirely, stored `NULL`)
+- [x] `test_college_email_empty_string_stored_as_null`
+- [x] `test_college_email_whitespace_only_stored_as_null`
+- [x] `test_college_email_valid_is_stored_trimmed_and_lowercase`
+- [x] `test_college_email_invalid_rejected`
+- [x] `test_college_email_any_domain_accepted` (no domain restriction)
+- [x] `test_college_email_same_as_personal_email_is_ok`
 
 Personal email
-- [ ] `test_personal_email_required`
-- [ ] `test_personal_email_invalid_rejected` (parametrized: no `@`, double `@`, spaces, no domain, trailing dot)
-- [ ] `test_personal_email_trimmed_and_lowercased`
-- [ ] `test_personal_email_plus_addressing_accepted`
+- [x] `test_personal_email_required`
+- [x] `test_personal_email_invalid_rejected` (parametrized: no `@`, double `@`, spaces, no domain, trailing dot)
+- [x] `test_personal_email_trimmed_and_lowercased`
+- [x] `test_personal_email_plus_addressing_accepted`
 
 Mobile
-- [ ] `test_mobile_required`
-- [ ] `test_mobile_ten_digits_accepted`
-- [ ] `test_mobile_plus91_prefix_normalized_to_ten_digits`
-- [ ] `test_mobile_leading_zero_normalized_to_ten_digits`
-- [ ] `test_mobile_spaces_and_dashes_normalized`
-- [ ] `test_mobile_starting_with_0_to_5_rejected`
-- [ ] `test_mobile_too_short_rejected`
-- [ ] `test_mobile_too_long_rejected`
-- [ ] `test_mobile_with_letters_rejected`
+- [x] `test_mobile_required`
+- [x] `test_mobile_ten_digits_accepted`
+- [x] `test_mobile_plus91_prefix_normalized_to_ten_digits`
+- [x] `test_mobile_leading_zero_normalized_to_ten_digits`
+- [x] `test_mobile_spaces_and_dashes_normalized`
+- [x] `test_mobile_starting_with_0_to_5_rejected`
+- [x] `test_mobile_too_short_rejected`
+- [x] `test_mobile_too_long_rejected`
+- [x] `test_mobile_with_letters_rejected`
 
 Domains
-- [ ] `test_domains_required`
-- [ ] `test_domains_empty_list_rejected`
-- [ ] `test_domains_single_accepted`
-- [ ] `test_domains_multiple_accepted`
-- [ ] `test_domains_all_five_accepted`
-- [ ] `test_domains_order_does_not_matter`
-- [ ] `test_domains_unknown_key_rejected`
-- [ ] `test_domains_wrong_case_rejected` (e.g. `Technology` instead of `technology`)
-- [ ] `test_domains_duplicate_value_rejected`
-- [ ] `test_domains_saved_rows_match_selection_exactly` (one `application_domains` row per chosen domain)
+- [x] `test_domains_required`
+- [x] `test_domains_empty_list_rejected`
+- [x] `test_domains_single_accepted`
+- [x] `test_domains_multiple_accepted`
+- [x] `test_domains_all_five_accepted`
+- [x] `test_domains_order_does_not_matter`
+- [x] `test_domains_unknown_key_rejected`
+- [x] `test_domains_wrong_case_rejected` (e.g. `Technology` instead of `technology`)
+- [x] `test_domains_duplicate_value_rejected`
+- [x] `test_domains_saved_rows_match_selection_exactly` (one `application_domains` row per chosen domain)
 
 Whole-request behaviour
-- [ ] `test_multiple_invalid_fields_reported_together`
-- [ ] `test_error_fields_keyed_by_field_name`
-- [ ] `test_validation_failure_writes_nothing` (no DB row, no storage call, no email call)
-- [ ] `test_success_response_has_only_id_and_message`
-- [ ] `test_unknown_extra_form_fields_ignored`
-- [ ] `test_json_body_instead_of_multipart_returns_clean_422_not_500`
+- [x] `test_multiple_invalid_fields_reported_together`
+- [x] `test_error_fields_keyed_by_field_name`
+- [x] `test_validation_failure_writes_nothing` (no DB row, no storage call, no email call)
+- [x] `test_success_response_has_only_id_and_message`
+- [x] `test_unknown_extra_form_fields_ignored`
+- [x] `test_json_body_instead_of_multipart_returns_clean_422_not_500`
 
-**Group 3: resume upload** (required in **B2**, file `test_resume.py`)
-- [ ] `test_resume_required`
-- [ ] `test_valid_pdf_accepted`
-- [ ] `test_pdf_exactly_at_size_limit_accepted`
-- [ ] `test_pdf_one_byte_over_limit_returns_413`
-- [ ] `test_oversized_upload_never_reaches_storage`
-- [ ] `test_empty_file_rejected`
-- [ ] `test_non_pdf_with_pdf_extension_returns_415`
-- [ ] `test_spoofed_pdf_content_type_with_non_pdf_bytes_returns_415`
-- [ ] `test_other_file_types_rejected_415` (parametrized: image, docx, zip, exe, text)
-- [ ] `test_resume_filename_with_path_traversal_is_handled_safely`
-- [ ] `test_resume_filename_unicode_and_very_long_handled`
-- [ ] `test_object_key_never_contains_original_filename`
-- [ ] `test_object_key_format_uses_cycle_and_application_id`
+**Group 3: resume upload** (required in **B2**, file `test_resume.py`; verified locally)
+- [x] `test_resume_required`
+- [x] `test_valid_pdf_accepted`
+- [x] `test_pdf_exactly_at_size_limit_accepted`
+- [x] `test_pdf_one_byte_over_limit_returns_413`
+- [x] `test_oversized_upload_never_reaches_storage`
+- [x] `test_empty_file_rejected`
+- [x] `test_non_pdf_with_pdf_extension_returns_415`
+- [x] `test_spoofed_pdf_content_type_with_non_pdf_bytes_returns_415`
+- [x] `test_other_file_types_rejected_415` (parametrized: image, docx, zip, exe, text)
+- [x] `test_resume_filename_with_path_traversal_is_handled_safely`
+- [x] `test_resume_filename_unicode_and_very_long_handled`
+- [x] `test_object_key_never_contains_original_filename`
+- [x] `test_object_key_format_uses_cycle_and_application_id`
 
-**Group 4: save flow and data integrity** (required in **B2**, file `test_save_flow.py`)
-- [ ] `test_successful_application_creates_exactly_one_application_row`
-- [ ] `test_application_row_stores_normalized_values` (uppercase USN, lowercase emails, 10-digit mobile)
-- [ ] `test_application_id_is_valid_uuid`
-- [ ] `test_cycle_taken_from_config`
-- [ ] `test_resume_metadata_saved` (object key, original filename, size)
-- [ ] `test_confirmation_email_status_starts_as_pending`
-- [ ] `test_application_and_domain_rows_commit_together` (force the domain insert to fail, expect no application row either)
-- [ ] `test_db_failure_after_upload_deletes_uploaded_resume`
-- [ ] `test_db_failure_returns_clean_500_with_no_partial_rows`
-- [ ] `test_storage_failure_returns_clean_500_and_no_db_row`
-- [ ] `test_storage_cleanup_failure_is_logged_and_does_not_mask_original_error`
-- [ ] `test_database_unavailable_returns_500_without_crashing_the_app`
+**Group 4: save flow and data integrity** (required in **B2**, file `test_save_flow.py`; verified locally)
+- [x] `test_successful_application_creates_exactly_one_application_row`
+- [x] `test_application_row_stores_normalized_values` (uppercase USN, lowercase emails, 10-digit mobile)
+- [x] `test_application_id_is_valid_uuid`
+- [x] `test_cycle_taken_from_config`
+- [x] `test_resume_metadata_saved` (object key, original filename, size)
+- [x] `test_confirmation_email_status_starts_as_pending`
+- [x] `test_application_and_domain_rows_commit_together` (force the domain insert to fail, expect no application row either)
+- [x] `test_db_failure_after_upload_deletes_uploaded_resume`
+- [x] `test_db_failure_returns_clean_500_with_no_partial_rows`
+- [x] `test_storage_failure_returns_clean_500_and_no_db_row`
+- [x] `test_storage_cleanup_failure_is_logged_and_does_not_mask_original_error`
+- [x] `test_database_unavailable_returns_500_without_crashing_the_app`
 
-**Group 5: duplicates and concurrency** (required in **B2**, file `test_duplicates.py`)
-- [ ] `test_second_application_same_usn_same_cycle_returns_409`
-- [ ] `test_duplicate_usn_different_case_returns_409`
-- [ ] `test_duplicate_usn_with_surrounding_spaces_returns_409`
-- [ ] `test_same_usn_in_different_cycle_is_allowed`
-- [ ] `test_different_usn_same_personal_email_is_allowed` (uniqueness is on USN + cycle only)
-- [ ] `test_duplicate_leaves_no_orphan_resume_in_storage`
-- [ ] `test_duplicate_does_not_send_email`
-- [ ] `test_duplicate_does_not_modify_the_first_application`
-- [ ] `test_concurrent_submissions_same_usn_only_one_succeeds` (several parallel requests: exactly one `201`, the rest `409`, exactly one row)
-- [ ] `test_concurrent_duplicates_leave_no_orphan_objects`
+**Group 5: duplicates and concurrency** (required in **B2**, file `test_duplicates.py`; verified locally)
+- [x] `test_second_application_same_usn_same_cycle_returns_409`
+- [x] `test_duplicate_usn_different_case_returns_409`
+- [x] `test_duplicate_usn_with_surrounding_spaces_returns_409`
+- [x] `test_same_usn_in_different_cycle_is_allowed`
+- [x] `test_different_usn_same_personal_email_is_allowed` (uniqueness is on USN + cycle only)
+- [x] `test_duplicate_leaves_no_orphan_resume_in_storage`
+- [x] `test_duplicate_does_not_send_email`
+- [x] `test_duplicate_does_not_modify_the_first_application`
+- [x] `test_concurrent_submissions_same_usn_only_one_succeeds` (five parallel requests: exactly one `201`, the rest `409`, exactly one row)
+- [x] `test_concurrent_duplicates_leave_no_orphan_objects`
 
-**Group 6: privacy and security** (required in **B2**, file `test_privacy_security.py`)
-- [ ] `test_logs_never_contain_name_usn_phone_or_email` (capture logs across success, validation failure and 500)
-- [ ] `test_responses_never_echo_personal_data` (success and error bodies)
-- [ ] `test_sql_injection_payloads_rejected_or_stored_as_plain_data_and_tables_intact`
-- [ ] `test_500_response_has_no_stack_trace_or_connection_string`
+**Group 6: privacy and security** (required in **B2**, file `test_privacy_security.py`; verified locally)
+- [x] `test_logs_never_contain_name_usn_phone_or_email` (capture logs across success, validation failure and 500)
+- [x] `test_responses_never_echo_personal_data` (success and error bodies)
+- [x] `test_sql_injection_payloads_rejected_or_stored_as_plain_data_and_tables_intact`
+- [x] `test_500_response_has_no_stack_trace_or_connection_string`
 
 **Group 7: confirmation email** (required in **B3**, file `test_email.py`)
-- [ ] `test_confirmation_email_triggered_after_successful_save`
-- [ ] `test_email_sent_to_personal_email_only` (never to the college email)
-- [ ] `test_email_called_with_normalized_name_and_selected_domains`
-- [ ] `test_email_failure_still_returns_201`
-- [ ] `test_email_failure_sets_status_failed_and_keeps_application`
-- [ ] `test_email_success_sets_status_sent_and_timestamp`
-- [ ] `test_slow_email_does_not_delay_the_201_response`
-- [ ] `test_email_not_sent_when_validation_fails`
-- [ ] `test_email_not_sent_when_storage_fails`
-- [ ] `test_email_failure_logged_without_personal_data`
+- [x] `test_confirmation_email_triggered_after_successful_save`
+- [x] `test_email_sent_to_personal_email_only` (never to the college email)
+- [x] `test_email_called_with_normalized_name_and_selected_domains`
+- [x] `test_email_failure_still_returns_201`
+- [x] `test_email_failure_sets_status_failed_and_keeps_application`
+- [x] `test_email_success_sets_status_sent_and_timestamp`
+- [x] `test_slow_email_does_not_delay_the_201_response`
+- [x] `test_email_not_sent_when_validation_fails`
+- [x] `test_email_not_sent_when_storage_fails`
+- [x] `test_email_failure_logged_without_personal_data`
 
 **Group 8: rate limiting** (required in **B3**, file `test_rate_limit.py`)
-- [ ] `test_requests_under_limit_succeed`
-- [ ] `test_request_over_limit_returns_429_contract_shape`
-- [ ] `test_rate_limit_is_per_client_ip`
-- [ ] `test_rate_limit_resets_after_window` (freeze/advance time, don't sleep)
-- [ ] `test_rate_limited_request_writes_nothing`
-- [ ] `test_health_endpoint_is_not_rate_limited`
-- [ ] `test_spoofed_forwarded_header_does_not_bypass_limit`
+- [x] `test_requests_under_limit_succeed`
+- [x] `test_request_over_limit_returns_429_contract_shape`
+- [x] `test_rate_limit_is_per_client_ip`
+- [x] `test_rate_limit_resets_after_window` (freeze/advance time, don't sleep)
+- [x] `test_rate_limited_request_writes_nothing`
+- [x] `test_health_endpoint_is_not_rate_limited`
+- [x] `test_spoofed_forwarded_header_does_not_bypass_limit`
 
 **Group 9: full flows** (required in **B3**, file `test_full_flows.py`)
-- [ ] `test_full_happy_path_all_fields_all_five_domains` (DB rows, storage call, email call, `201`)
-- [ ] `test_minimal_application_no_college_email_one_domain`
-- [ ] `test_realistic_applicant_matrix` (parametrized set of different-looking but valid applicants, including different USN shapes)
+- [x] `test_full_happy_path_all_fields_all_five_domains` (DB rows, storage call, email call, `201`)
+- [x] `test_minimal_application_no_college_email_one_domain`
+- [x] `test_realistic_applicant_matrix` (parametrized set of different-looking but valid applicants, including different USN shapes)
 
 ---
 

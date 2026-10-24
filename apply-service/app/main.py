@@ -3,7 +3,7 @@
 import logging
 from collections.abc import Mapping
 
-from fastapi import FastAPI, File, Form, Request, UploadFile
+from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -11,7 +11,15 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.config import Settings
 from app.errors import ApiError
-from app.services.application_service import submit_application
+from app.services.application_service import (
+    ConfirmationEmail,
+    ResumeStorage,
+    submit_application,
+)
+from app.services.rate_limit import (
+    SlidingWindowRateLimiter,
+    enforce_application_rate_limit,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -75,12 +83,17 @@ def register_error_handlers(application: FastAPI) -> None:
 
 def create_app(
     settings: Settings | None = None,
+    *,
+    storage: ResumeStorage | None = None,
+    email_service: ConfirmationEmail | None = None,
 ) -> FastAPI:
     """Create the API application using validated runtime settings."""
     runtime_settings = settings or Settings()
     application = FastAPI(title="Turing Club Apply API")
     application.state.settings = runtime_settings
-    application.state.storage = None
+    application.state.storage = storage
+    application.state.email = email_service
+    application.state.rate_limiter = SlidingWindowRateLimiter()
     application.add_middleware(
         CORSMiddleware,
         allow_origins=runtime_settings.allowed_origins,
@@ -97,6 +110,7 @@ def create_app(
     @application.post("/api/v1/applications", status_code=201)
     async def create_application(
         request: Request,
+        background_tasks: BackgroundTasks,
         name: str = Form(...),
         usn: str = Form(...),
         college_email: str | None = Form(default=None),
@@ -104,10 +118,13 @@ def create_app(
         mobile: str = Form(...),
         domains: list[str] = Form(...),
         resume: UploadFile = File(...),
+        _: None = Depends(enforce_application_rate_limit),
     ) -> dict[str, str]:
         return await submit_application(
             settings=request.app.state.settings,
             storage=request.app.state.storage,
+            email_service=request.app.state.email,
+            background_tasks=background_tasks,
             form_data={
                 "name": name,
                 "usn": usn,

@@ -84,12 +84,13 @@ def test_resume_metadata_saved(db_client, db_url):
     assert row[9] == len(b"%PDF-portfolio")
 
 
-def test_confirmation_email_status_starts_as_pending(db_client, db_url):
+def test_confirmation_email_status_updates_after_background_email(db_client, db_url):
     response = post_application(db_client)
 
     applications, _ = _rows(db_url)
     assert response.status_code == 201
-    assert applications[0][10] == "pending"
+    assert applications[0][10] == "sent"
+    assert applications[0][11] is not None
 
 
 def test_application_and_domain_rows_commit_together(

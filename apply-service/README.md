@@ -1,44 +1,67 @@
 # apply-service
 
-Microservice for **Apply to Join**: stores applications (Neon / Postgres), resume PDFs (MinIO) and sends the thank-you email (Brevo). This change adds the FastAPI scaffold, configuration, health endpoint, CORS, and shared JSON error responses. The multipart submission endpoint and transactional persistence are implemented here. Real storage and email integrations are follow-up tasks.
+Microservice for **Apply to Join**: stores applications (Neon / Postgres), resume PDFs (MinIO) and sends the thank-you email (Brevo). The FastAPI API, validation, transactional submission flow, injectable confirmation-email background task, and optional per-process rate limit are in place.
 
 ## What is here
 
 ```
 apply-service/
   app/
-    main.py               FastAPI app, health route, CORS, and error responses
-    config.py             validated environment settings
-    errors.py             sanitized API errors
-    schemas.py            API response schemas
-    services/             application service package
-  db/schema.sql           the whole database schema (one file)
-  tests/                  API and schema tests
-  requirements.txt        pinned API, test, and lint dependencies
+    main.py                 FastAPI routes, CORS and error responses
+    config.py               validated runtime settings
+    errors.py               sanitized API error responses
+    schemas.py              multipart application validation and normalization
+    services/
+      application_service.py submission, PDF checks and transaction flow
+  db/schema.sql             the whole database schema (one file)
+  tests/                    schema and API regression tests
+  requirements.txt          pinned API, test and lint dependencies
   ruff.toml
   pytest.ini
   .env.example
 ```
 
-## Start the API
+### Start the API
 
-Copy `.env.example` to `.env`, set the runtime values (including `DATABASE_URL`,
-`APPLICATION_CYCLE`, and `CORS_ORIGINS`), then run:
+Copy `.env.example` to `.env`, set `DATABASE_URL`, `APPLICATION_CYCLE` and
+`CORS_ORIGINS` to the appropriate values, then run:
 
 ```bash
 uvicorn app.main:app --reload
 ```
 
-The health endpoint is `GET /api/v1/health`. `CORS_ORIGINS` accepts a
-comma-separated list of explicit frontend origins and rejects wildcard origins.
-Validation, HTTP, and unexpected errors use the API's JSON contract; unexpected
-errors are logged without exposing internal details in the response.
+The health check is available at `GET /api/v1/health`. Set `CORS_ORIGINS` to a
+comma-separated list of explicit frontend origins; wildcard origins are rejected.
+The API returns consistent JSON error bodies, including a plain `fields` map for
+request validation errors and a sanitized message for unexpected server errors.
 
-## Submit an application
+### Submit an application
 
-`POST /api/v1/applications` accepts multipart form fields `name`, `usn`, `personal_email`, `mobile`, one or more repeated `domains` fields, an optional `college_email`, and a PDF `resume`. The service normalizes and validates fields, enforces the configured resume size limit, uploads through an injected storage service, and commits the application and selected domains in one PostgreSQL transaction. Storage remains an injected interface in this change; the tests use an in-memory fake. Do not enable live submissions until Darsh's MinIO integration is wired in.
+`POST /api/v1/applications` accepts `multipart/form-data`: `name`, `usn`,
+`personal_email`, `mobile`, one or more repeated `domains` fields, and a `resume`
+PDF; `college_email` is optional. The service normalizes the form values, checks
+the PDF signature and configured size limit, rejects duplicate USNs for the
+configured cycle, uploads through the storage service interface, and commits the
+application and its selected domains in one database transaction.
 
-Run backend tests with `TEST_DATABASE_URL` set to a disposable local PostgreSQL server whose role can create databases. The tests create and drop their own temporary database; never use production data.
+Storage and email are injected through `create_app(settings, storage=...,
+email_service=...)`. Tests use in-memory fakes. The corresponding MinIO and Brevo
+modules are not included in this snapshot, so the default production `app` has no
+storage configured and successful submissions must remain disabled until those
+implementations are supplied.
+
+The confirmation email runs as a Starlette background task after the `201`
+response is sent. A send failure leaves the saved application intact, records
+`confirmation_email_status='failed'`, and logs only the application ID. Successful
+sends record `sent` and a timestamp. `RATE_LIMIT_ENABLED`, `RATE_LIMIT_REQUESTS`,
+and `RATE_LIMIT_WINDOW_SECONDS` configure a sliding-window limit keyed by the
+direct client IP; forwarded headers are not trusted. The limiter is process-local,
+so a multi-worker deployment needs a shared rate-limit store before relying on
+the configured limit across workers.
+
+To run the backend tests, set `TEST_DATABASE_URL` to a disposable local PostgreSQL
+server URL whose role can create databases. The schema and API tests create and
+drop a temporary test database; never point this variable at production data.
 
 ## Tables
 

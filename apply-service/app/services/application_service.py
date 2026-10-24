@@ -7,7 +7,7 @@ from pathlib import PurePath
 from typing import Any, Protocol
 
 import psycopg
-from fastapi import UploadFile
+from fastapi import BackgroundTasks, UploadFile
 from pydantic import ValidationError
 from starlette.concurrency import run_in_threadpool
 
@@ -28,6 +28,15 @@ class ResumeStorage(Protocol):
 
     def delete_resume(self, object_key: str) -> None:
         """Remove an uploaded resume object."""
+
+
+class ConfirmationEmail(Protocol):
+    """Email service boundary supplied by the Brevo integration."""
+
+    def send_confirmation_email(
+        self, to: str, name: str, domains: list[str]
+    ) -> None:
+        """Send a submission confirmation to the applicant."""
 
 
 def _validation_fields(exc: ValidationError) -> dict[str, str]:
@@ -151,10 +160,57 @@ def _cleanup_upload(
         )
 
 
+def _update_confirmation_email_status(
+    database_url: str, application_id: str, status: str
+) -> None:
+    sent_at = "now()" if status == "sent" else "NULL"
+    with psycopg.connect(database_url) as connection:
+        connection.execute(
+            f"""
+            UPDATE applications
+            SET confirmation_email_status = %s,
+                confirmation_email_sent_at = {sent_at}
+            WHERE id = %s
+            """,
+            (status, uuid.UUID(application_id)),
+        )
+
+
+def _send_confirmation_email(
+    email_service: ConfirmationEmail | None,
+    database_url: str,
+    application_id: str,
+    to: str,
+    name: str,
+    domains: list[str],
+) -> None:
+    status = "failed"
+    try:
+        if email_service is None:
+            raise RuntimeError("Email service is not configured")
+        email_service.send_confirmation_email(to, name, domains)
+        status = "sent"
+    except Exception:
+        logger.error(
+            "Confirmation email failed (application_id=%s)",
+            application_id,
+        )
+
+    try:
+        _update_confirmation_email_status(database_url, application_id, status)
+    except Exception:
+        logger.error(
+            "Confirmation email status update failed (application_id=%s)",
+            application_id,
+        )
+
+
 async def submit_application(
     *,
     settings: Settings,
     storage: ResumeStorage | None,
+    email_service: ConfirmationEmail | None,
+    background_tasks: BackgroundTasks,
     form_data: dict[str, Any],
     resume: UploadFile | None,
 ) -> dict[str, str]:
@@ -246,4 +302,13 @@ async def submit_application(
         ) from exc
 
     logger.info("Application saved (application_id=%s)", application_id)
+    background_tasks.add_task(
+        _send_confirmation_email,
+        email_service,
+        settings.database_url,
+        application_id,
+        str(submission.personal_email),
+        submission.name,
+        submission.domains,
+    )
     return {"id": application_id, "message": "Application received"}

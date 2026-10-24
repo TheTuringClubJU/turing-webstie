@@ -128,6 +128,9 @@ def settings() -> Settings:
         email_from="test@example.com",
         email_from_name="Turing Club",
         app_env="test",
+        rate_limit_enabled=False,
+        rate_limit_requests=2,
+        rate_limit_window_seconds=60,
     )
 
 
@@ -193,6 +196,7 @@ def db_client(
     _clear_applications(db_url)
     application = create_app(settings.model_copy(update={"database_url": db_url}))
     application.state.storage = fake_storage
+    application.state.email = fake_email
     with TestClient(application, raise_server_exceptions=False) as test_client:
         yield test_client
     _clear_applications(db_url)

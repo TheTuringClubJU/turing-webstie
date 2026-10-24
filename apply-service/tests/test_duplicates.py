@@ -81,7 +81,7 @@ def test_duplicate_does_not_send_email(fake_email, db_client):
     assert post_application(db_client).status_code == 201
     assert post_application(db_client).status_code == 409
 
-    assert fake_email.calls == []
+    assert len(fake_email.calls) == 1
 
 
 def test_duplicate_does_not_modify_the_first_application(db_client, db_url):

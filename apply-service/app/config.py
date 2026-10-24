@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     email_from_name: str
     app_env: Literal["development", "test", "production"] = "development"
     max_resume_mb: int = 5
+    rate_limit_enabled: bool = False
+    rate_limit_requests: int = 5
+    rate_limit_window_seconds: int = 60
 
     @field_validator("cors_origins")
     @classmethod
@@ -57,6 +60,13 @@ class Settings(BaseSettings):
     def validate_max_resume_mb(cls, value: int) -> int:
         if value < 1:
             raise ValueError("MAX_RESUME_MB must be positive")
+        return value
+
+    @field_validator("rate_limit_requests", "rate_limit_window_seconds")
+    @classmethod
+    def validate_rate_limit_values(cls, value: int) -> int:
+        if value < 1:
+            raise ValueError("Rate limit values must be positive")
         return value
 
     @property
