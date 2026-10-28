@@ -6,3 +6,5 @@ uvicorn==0.34.0
 psycopg[binary]==3.2.3
 pytest==8.3.4
 ruff==0.17.1
+email-validator==2.2.0
+python-multipart==0.0.20
